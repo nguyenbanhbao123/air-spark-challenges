@@ -47,6 +47,11 @@ contextBridge.exposeInMainWorld('api', {
     if (bufferedOverlayImage) cb(bufferedOverlayImage)
   },
 
+  // Sent from the capture overlay once the user has framed the shot and typed
+  // their question. A null image means they cancelled.
+  submitCapture: (image: string | null, question: string): void =>
+    ipcRenderer.send('capture:submit', image, question),
+
   submitSelection: (rect: Rect | null): void =>
     ipcRenderer.send('capture:selection', rect),
 

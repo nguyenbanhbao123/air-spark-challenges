@@ -3,7 +3,7 @@ import HomePage from "./HomePage";
 import SignInPage from "./SignInPage";
 import RegisterPage from "./RegisterPage";
 import ChatPopup from "./ChatPopup";
-import type { Conversation } from "../core/types";
+import type { Conversation, CaptureResult } from "../core/types";
 
 type Page = "home" | "signin" | "register";
 
@@ -12,45 +12,44 @@ export default function App() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  // The question typed on the capture page, sent automatically once the chat opens.
+  const [pendingQuestion, setPendingQuestion] = useState<string>("");
 
   useEffect(() => {
-    window.api.onCaptureCompleted(async (image: string) => {
-      setCapturedImage(image);
-      setIsChatOpen(true);
-      // Create a new conversation with the captured image
-      const newConv = await window.api.createConversation("New Conversation");
-      setConversation({
-        ...newConv,
-        image: image
-      });
+    window.api.onCaptureCompleted((result: CaptureResult) => {
+      void handleCaptureComplete(result);
     });
   }, []);
 
-  const handleCaptureComplete = async (image: string | null) => {
-    if (image) {
-      setCapturedImage(image);
-      setIsChatOpen(true);
-      // Create a new conversation with the captured image
-      const newConv = await window.api.createConversation("New Conversation");
-      setConversation({
-        ...newConv,
-        image: image
-      });
-    } else {
-      // User cancelled capture
+  const handleCaptureComplete = async (result: CaptureResult | null) => {
+    if (!result) {
+      // User cancelled the capture
       setCapturedImage(null);
+      setPendingQuestion("");
       setIsChatOpen(false);
+      return;
     }
+
+    setCapturedImage(result.image);
+    setPendingQuestion(result.question);
+    setIsChatOpen(true);
+
+    const newConv = await window.api.createConversation("New Conversation");
+    setConversation({
+      ...newConv,
+      image: result.image,
+    });
   };
 
   const handleCaptureClick = async () => {
-    const image = await window.api.captureRegion();
-    await handleCaptureComplete(image);
+    const result = await window.api.captureRegion();
+    await handleCaptureComplete(result);
   };
 
   const handleCloseChat = () => {
     setIsChatOpen(false);
     setCapturedImage(null);
+    setPendingQuestion("");
     setConversation(null);
   };
 
@@ -86,6 +85,7 @@ export default function App() {
       
       {isChatOpen && conversation && capturedImage && (
         <ChatPopup
+          initialQuestion={pendingQuestion}
           conversation={conversation}
           onConversationUpdate={handleConversationUpdate}
           onClose={handleCloseChat}

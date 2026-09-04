@@ -4,16 +4,19 @@ import {
   X,
   Sparkles,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Conversation, Message } from "../core/types";
 
 type ChatPopupProps = {
+  /** Typed on the capture page — sent once, automatically, as the chat opens. */
+  initialQuestion?: string;
   conversation: Conversation;
   onConversationUpdate: (updatedConversation: Conversation) => void;
   onClose: () => void;
 };
 
 export default function ChatPopup({
+  initialQuestion,
   conversation,
   onConversationUpdate,
   onClose,
@@ -31,19 +34,22 @@ export default function ChatPopup({
     }
   }, [conversation]);
 
-  const handleSend = async () => {
-    if (!question.trim() || isLoading) return;
+  const sentInitial = useRef(false);
+
+  const sendQuestion = async (text: string) => {
+    const asked = text.trim();
+    if (!asked || isLoading) return;
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: "user",
-      content: question,
+      content: asked,
       createdAt: Date.now(),
     };
 
     const updatedConversation: Conversation = {
       ...conversation,
-      title: question.substring(0, 30) + (question.length > 30 ? "..." : ""),
+      title: asked.substring(0, 30) + (asked.length > 30 ? "..." : ""),
       messages: [...conversation.messages, userMessage],
     };
 
@@ -53,7 +59,7 @@ export default function ChatPopup({
     setError(null);
 
     try {
-      const answer = await window.api.ask(conversation.image, question, conversation.messages);
+      const answer = await window.api.ask(conversation.image, asked, conversation.messages);
       
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
@@ -83,6 +89,19 @@ export default function ChatPopup({
       setIsLoading(false);
     }
   };
+
+  const handleSend = () => {
+    void sendQuestion(question);
+  };
+
+  // A capture arrives with the question already typed on the capture page.
+  // Send it once, as soon as the chat opens.
+  useEffect(() => {
+    if (!sentInitial.current && initialQuestion && initialQuestion.trim()) {
+      sentInitial.current = true;
+      void sendQuestion(initialQuestion);
+    }
+  }, [initialQuestion]);
 
   const handleMinimize = () => {
     // For now, minimize just does nothing or could be implemented to minimize the chat

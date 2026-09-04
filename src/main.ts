@@ -76,9 +76,9 @@ function registerIpcHandlers(): void {
 function registerGlobalShortcuts(): void {
   const registered = globalShortcut.register("Alt+S", async () => {
     console.log("Alt+S pressed - starting capture");
-    const imageBase64 = await captureRegion();
-    if (imageBase64 && mainWindow) {
-      mainWindow.webContents.send("capture:completed", imageBase64);
+    const result = await captureRegion();
+    if (result && mainWindow) {
+      mainWindow.webContents.send("capture:completed", result);
       bringMainWindowToFront();
     }
   });
