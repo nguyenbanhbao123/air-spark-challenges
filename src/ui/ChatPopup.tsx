@@ -4,11 +4,100 @@ import {
   X,
   Sparkles,
 } from "lucide-react";
+import { useState, useEffect } from "react";
+import type { Conversation, Message } from "../core/types";
 
-export default function ChatPopup() {
+type ChatPopupProps = {
+  conversation: Conversation;
+  onConversationUpdate: (updatedConversation: Conversation) => void;
+  onClose: () => void;
+};
+
+export default function ChatPopup({
+  conversation,
+  onConversationUpdate,
+  onClose,
+}: ChatPopupProps) {
+  const [question, setQuestion] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Save conversation when it changes
+  useEffect(() => {
+    if (conversation) {
+      window.api.saveConversation(conversation).catch(err => {
+        console.error("Failed to save conversation:", err);
+      });
+    }
+  }, [conversation]);
+
+  const handleSend = async () => {
+    if (!question.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: question,
+      createdAt: Date.now(),
+    };
+
+    const updatedConversation: Conversation = {
+      ...conversation,
+      title: question.substring(0, 30) + (question.length > 30 ? "..." : ""),
+      messages: [...conversation.messages, userMessage],
+    };
+
+    onConversationUpdate(updatedConversation);
+    setQuestion("");
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const answer = await window.api.ask(conversation.image, question, conversation.messages);
+      
+      const assistantMessage: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: answer,
+        createdAt: Date.now(),
+      };
+
+      const finalConversation: Conversation = {
+        ...updatedConversation,
+        messages: [...updatedConversation.messages, assistantMessage],
+      };
+
+      onConversationUpdate(finalConversation);
+    } catch (err) {
+      console.error("Ask failed:", err);
+      const errorMessage = err instanceof Error ? err.message : "An error occurred while getting the answer.";
+      setError(errorMessage);
+      
+      // Remove the user message if the ask failed
+      const revertedConversation: Conversation = {
+        ...conversation,
+        messages: conversation.messages,
+      };
+      onConversationUpdate(revertedConversation);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleMinimize = () => {
+    // For now, minimize just does nothing or could be implemented to minimize the chat
+    console.log("Chat minimized");
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   return (
-    <div className="absolute bottom-8 right-8 w-[320px] overflow-hidden rounded-2xl border border-white/10 bg-[#101215] shadow-2xl shadow-black/60">
-
+    <div className="fixed bottom-8 right-8 w-[320px] overflow-hidden rounded-2xl border border-white/10 bg-[#101215] shadow-2xl shadow-black/60">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
         <div className="flex items-center gap-2">
@@ -22,97 +111,112 @@ export default function ChatPopup() {
         </div>
 
         <div className="flex items-center gap-2 text-gray-500">
-          <button className="transition hover:text-white">
+          <button 
+            onClick={handleMinimize}
+            className="transition hover:text-white"
+          >
             <Minus size={15} />
           </button>
 
-          <button className="transition hover:text-white">
+          <button 
+            onClick={onClose}
+            className="transition hover:text-white"
+          >
             <X size={15} />
           </button>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="space-y-4 p-4">
-
+      <div className="space-y-4 p-4 max-h-[400px] overflow-y-auto">
         {/* Screenshot preview */}
-        <div className="overflow-hidden rounded-lg border border-white/5 bg-[#08090b]">
-          <div className="p-3 font-mono text-[10px] leading-4">
-            <p className="text-purple-400">
-              function fetchData() {"{"}
-            </p>
+        {conversation.image && (
+          <div className="overflow-hidden rounded-lg border border-white/5 bg-[#08090b]">
+            <img 
+              src={conversation.image} 
+              alt="Captured screenshot" 
+              className="w-full h-auto object-cover"
+            />
+          </div>
+        )}
 
-            <p className="pl-3 text-gray-500">
-              const res = fetch("/api/data");
-            </p>
+        {/* Messages list */}
+        {conversation.messages.length === 0 && (
+          <div className="text-center text-xs text-gray-500">
+            Ask a question about your screenshot
+          </div>
+        )}
 
-            <p className="pl-3 text-gray-500">
-              const data = await res.json();
-            </p>
+        {conversation.messages.map((msg: Message) => (
+          <div 
+            key={msg.id} 
+            className={msg.role === "user" ? "ml-6 rounded-xl bg-white/5 p-3" : "flex gap-2"}
+          >
+            {msg.role === "assistant" && (
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f5c842] text-black">
+                <Sparkles size={14} />
+              </div>
+            )}
+            
+            <div className={msg.role === "user" ? "" : "rounded-xl bg-[#191c21] p-3 flex-1"}>
+              <p className="text-xs leading-5 text-gray-300 whitespace-pre-wrap">
+                {msg.content}
+              </p>
+              <p className="mt-2 text-[10px] text-gray-600">
+                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+          </div>
+        ))}
 
-            <p className="pl-3 text-gray-500">
-              return data;
-            </p>
-
-            <p className="text-purple-400">
-              {"}"}
+        {/* Error message */}
+        {error && (
+          <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3">
+            <p className="text-xs leading-5 text-red-400">
+              Error: {error}
             </p>
           </div>
-        </div>
+        )}
 
-        {/* User message */}
-        <div className="rounded-xl bg-white/5 p-3">
-          <p className="text-xs leading-5 text-gray-300">
-            Why is my code throwing this TypeError?
-          </p>
-
-          <p className="mt-2 text-[10px] text-gray-600">
-            10:24 AM
-          </p>
-        </div>
-
-        {/* AI message */}
-        <div className="flex gap-2">
-
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f5c842] text-black">
-            <Sparkles size={14} />
+        {/* Loading state */}
+        {isLoading && (
+          <div className="flex gap-2">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f5c842] text-black">
+              <Sparkles size={14} />
+            </div>
+            <div className="rounded-xl bg-[#191c21] p-3 flex-1">
+              <div className="flex space-x-2">
+                <div className="h-2 w-2 rounded-full bg-gray-500 animate-bounce"></div>
+                <div className="h-2 w-2 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="h-2 w-2 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
+            </div>
           </div>
-
-          <div className="rounded-xl bg-[#191c21] p-3">
-            <p className="text-xs leading-5 text-gray-300">
-              The TypeError occurs because{" "}
-              <span className="text-[#f5c842]">
-                user
-              </span>{" "}
-              is undefined. Check that it exists before
-              accessing its properties.
-            </p>
-
-            <p className="mt-2 text-[10px] text-gray-600">
-              10:24 AM
-            </p>
-          </div>
-
-        </div>
+        )}
       </div>
 
       {/* Input */}
       <div className="border-t border-white/5 p-3">
         <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#08090b] p-1">
-
           <input
             type="text"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={handleKeyPress}
             placeholder="Ask anything about your screen..."
             className="min-w-0 flex-1 bg-transparent px-3 py-2 text-xs text-white outline-none placeholder:text-gray-600"
+            disabled={isLoading}
           />
 
-          <button className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#f5c842] text-black transition hover:bg-[#ffd85c]">
+          <button 
+            onClick={handleSend}
+            disabled={isLoading || !question.trim()}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#f5c842] text-black transition hover:bg-[#ffd85c] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <ArrowUp size={16} />
           </button>
-
         </div>
       </div>
-
     </div>
   );
 }

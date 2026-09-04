@@ -71,11 +71,12 @@ export async function save(conversation: Conversation): Promise<void> {
 }
 
 // Create a new empty conversation
-export async function createConversation(title = "New Conversation"): Promise<Conversation> {
+export async function createConversation(title = "New Conversation", image?: string): Promise<Conversation> {
   const now = Date.now();
   const conversation: Conversation = {
     id: crypto.randomUUID(),
     title,
+    image: image || "",
     createdAt: now,
     updatedAt: now,
     messages: [],

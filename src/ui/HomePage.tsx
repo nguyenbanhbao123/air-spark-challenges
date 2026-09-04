@@ -15,11 +15,13 @@ import logoPng from '../assets/logo.png';
 type HomePageProps = {
   onSignIn: () => void;
   onRegister: () => void;
+  onCapture: () => Promise<void>;
 };
 
 export default function HomePage({
   onSignIn,
   onRegister,
+  onCapture,
 }: HomePageProps) {
   return (
     <main className="min-h-screen bg-[#070809] text-white">
@@ -129,7 +131,7 @@ export default function HomePage({
           <div className="mt-9 flex flex-wrap gap-4">
 
             <button
-              onClick={onRegister}
+              onClick={onCapture}
               className="flex items-center gap-3 rounded-lg bg-[#f5c842] px-6 py-4 font-semibold text-black transition hover:bg-[#ffd85c]"
             >
               <Camera size={20} />

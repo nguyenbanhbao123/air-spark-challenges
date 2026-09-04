@@ -41,12 +41,13 @@ export async function captureRegion(): Promise<string | null> {
     });
   }
 
-  // 3. Send image and await selection from React component
-  const rect = await new Promise<Rect | null>((resolve) => {
-    overlay.webContents.once('did-finish-load', () => {
-      overlay.webContents.send('overlay:image', shot.toDataURL());
-    });
+  // 3. Send the image, then await the selection from the React component.
+  // loadURL/loadFile above already resolves on did-finish-load, so listening for
+  // that event here would attach too late and never fire. Send it directly —
+  // preload buffers the value, so it is safe to send before React mounts.
+  overlay.webContents.send('overlay:image', shot.toDataURL());
 
+  const rect = await new Promise<Rect | null>((resolve) => {
     ipcMain.once('capture:selection', (_event, selectionRect: Rect | null) => {
       resolve(selectionRect);
     });
