@@ -12,6 +12,14 @@ ipcRenderer.on('overlay:image', (_e, dataUrl: string) => {
   for (const listener of overlayImageListeners) listener(dataUrl)
 })
 
+let bufferedCaptureCompletedImage: string | null = null
+const captureCompletedListeners: Array<(dataUrl: string) => void> = []
+
+ipcRenderer.on('capture:completed', (_e, dataUrl: string) => {
+  bufferedCaptureCompletedImage = dataUrl
+  for (const listener of captureCompletedListeners) listener(dataUrl)
+})
+
 contextBridge.exposeInMainWorld('api', {
   captureRegion: (): Promise<string | null> =>
     ipcRenderer.invoke('capture:region'),
@@ -40,5 +48,10 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   submitSelection: (rect: Rect | null): void =>
-    ipcRenderer.send('capture:selection', rect)
+    ipcRenderer.send('capture:selection', rect),
+
+  onCaptureCompleted: (cb: (dataUrl: string) => void): void => {
+    captureCompletedListeners.push(cb)
+    if (bufferedCaptureCompletedImage) cb(bufferedCaptureCompletedImage)
+  }
 })

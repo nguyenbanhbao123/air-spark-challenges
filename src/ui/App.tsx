@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import HomePage from "./HomePage";
 import SignInPage from "./SignInPage";
 import RegisterPage from "./RegisterPage";
@@ -12,6 +12,19 @@ export default function App() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  useEffect(() => {
+    window.api.onCaptureCompleted(async (image: string) => {
+      setCapturedImage(image);
+      setIsChatOpen(true);
+      // Create a new conversation with the captured image
+      const newConv = await window.api.createConversation("New Conversation");
+      setConversation({
+        ...newConv,
+        image: image
+      });
+    });
+  }, []);
 
   const handleCaptureComplete = async (image: string | null) => {
     if (image) {

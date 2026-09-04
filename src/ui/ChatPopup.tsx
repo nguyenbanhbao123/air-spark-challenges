@@ -97,30 +97,30 @@ export default function ChatPopup({
   };
 
   return (
-    <div className="fixed bottom-8 right-8 w-[320px] overflow-hidden rounded-2xl border border-white/10 bg-[#101215] shadow-2xl shadow-black/60">
+    <div className="fixed bottom-8 right-8 w-[320px] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl shadow-black/10">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#f5c842] text-black">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent)] text-white">
             <Sparkles size={14} />
           </div>
 
-          <span className="text-sm font-semibold text-white">
-            Mindrop AI
+          <span className="text-sm font-semibold text-[var(--text)]">
+            Snapper AI
           </span>
         </div>
 
-        <div className="flex items-center gap-2 text-gray-500">
+        <div className="flex items-center gap-2 text-[var(--text-muted)]">
           <button 
             onClick={handleMinimize}
-            className="transition hover:text-white"
+            className="transition hover:text-[var(--text)]"
           >
             <Minus size={15} />
           </button>
 
           <button 
             onClick={onClose}
-            className="transition hover:text-white"
+            className="transition hover:text-[var(--text)]"
           >
             <X size={15} />
           </button>
@@ -131,7 +131,7 @@ export default function ChatPopup({
       <div className="space-y-4 p-4 max-h-[400px] overflow-y-auto">
         {/* Screenshot preview */}
         {conversation.image && (
-          <div className="overflow-hidden rounded-lg border border-white/5 bg-[#08090b]">
+          <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg)]">
             <img 
               src={conversation.image} 
               alt="Captured screenshot" 
@@ -142,7 +142,7 @@ export default function ChatPopup({
 
         {/* Messages list */}
         {conversation.messages.length === 0 && (
-          <div className="text-center text-xs text-gray-500">
+          <div className="text-center text-xs text-[var(--text-muted)]">
             Ask a question about your screenshot
           </div>
         )}
@@ -150,19 +150,19 @@ export default function ChatPopup({
         {conversation.messages.map((msg: Message) => (
           <div 
             key={msg.id} 
-            className={msg.role === "user" ? "ml-6 rounded-xl bg-white/5 p-3" : "flex gap-2"}
+            className={msg.role === "user" ? "ml-6 rounded-xl bg-[var(--surface-2)] p-3" : "flex gap-2"}
           >
             {msg.role === "assistant" && (
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f5c842] text-black">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white">
                 <Sparkles size={14} />
               </div>
             )}
             
-            <div className={msg.role === "user" ? "" : "rounded-xl bg-[#191c21] p-3 flex-1"}>
-              <p className="text-xs leading-5 text-gray-300 whitespace-pre-wrap">
+            <div className={msg.role === "user" ? "" : "rounded-xl bg-[var(--surface-2)] p-3 flex-1"}>
+              <p className="text-xs leading-5 text-[var(--text)] whitespace-pre-wrap">
                 {msg.content}
               </p>
-              <p className="mt-2 text-[10px] text-gray-600">
+              <p className="mt-2 text-[10px] text-[var(--text-muted)]">
                 {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
@@ -172,7 +172,7 @@ export default function ChatPopup({
         {/* Error message */}
         {error && (
           <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3">
-            <p className="text-xs leading-5 text-red-400">
+            <p className="text-xs leading-5 text-red-600">
               Error: {error}
             </p>
           </div>
@@ -181,14 +181,14 @@ export default function ChatPopup({
         {/* Loading state */}
         {isLoading && (
           <div className="flex gap-2">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f5c842] text-black">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white">
               <Sparkles size={14} />
             </div>
-            <div className="rounded-xl bg-[#191c21] p-3 flex-1">
+            <div className="rounded-xl bg-[var(--surface-2)] p-3 flex-1">
               <div className="flex space-x-2">
-                <div className="h-2 w-2 rounded-full bg-gray-500 animate-bounce"></div>
-                <div className="h-2 w-2 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                <div className="h-2 w-2 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                <div className="h-2 w-2 rounded-full bg-[var(--text-muted)] animate-bounce"></div>
+                <div className="h-2 w-2 rounded-full bg-[var(--text-muted)] animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="h-2 w-2 rounded-full bg-[var(--text-muted)] animate-bounce" style={{ animationDelay: '0.4s' }}></div>
               </div>
             </div>
           </div>
@@ -196,22 +196,22 @@ export default function ChatPopup({
       </div>
 
       {/* Input */}
-      <div className="border-t border-white/5 p-3">
-        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#08090b] p-1">
+      <div className="border-t border-[var(--border)] p-3">
+        <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1">
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={handleKeyPress}
             placeholder="Ask anything about your screen..."
-            className="min-w-0 flex-1 bg-transparent px-3 py-2 text-xs text-white outline-none placeholder:text-gray-600"
+            className="min-w-0 flex-1 bg-transparent px-3 py-2 text-xs text-[var(--text)] outline-none placeholder:text-[var(--text-muted)]"
             disabled={isLoading}
           />
 
           <button 
             onClick={handleSend}
             disabled={isLoading || !question.trim()}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#f5c842] text-black transition hover:bg-[#ffd85c] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] text-white transition hover:bg-[var(--accent-2)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ArrowUp size={16} />
           </button>

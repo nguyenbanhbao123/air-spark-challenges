@@ -35,6 +35,7 @@ declare global {
       deleteConversation(id: string): Promise<void>;
       onOverlayImage(cb: (dataUrl: string) => void): void;
       submitSelection(rect: Rect | null): void;
+      onCaptureCompleted(cb: (dataUrl: string) => void): void;
     };
   }
 }

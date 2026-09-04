@@ -52,6 +52,10 @@ export async function captureRegion(): Promise<string | null> {
       resolve(selectionRect);
     });
 
+    ipcMain.once('capture:confirm', (_event, selectionRect: Rect | null) => {
+      resolve(selectionRect);
+    });
+
     overlay.once('closed', () => resolve(null));
   });
 

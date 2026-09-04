@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, globalShortcut } from "electron";
 import * as path from "path";
 import dotenv from "dotenv";
 
@@ -40,6 +40,13 @@ function createWindow(): void {
   });
 }
 
+function bringMainWindowToFront(): void {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+}
+
 // Register IPC Handlers
 function registerIpcHandlers(): void {
   // App Info
@@ -66,16 +73,40 @@ function registerIpcHandlers(): void {
   ipcMain.handle("storage:get", (_event, id: string) => getConversation(id));
 }
 
+function registerGlobalShortcuts(): void {
+  const registered = globalShortcut.register("Alt+S", async () => {
+    console.log("Alt+S pressed - starting capture");
+    const imageBase64 = await captureRegion();
+    if (imageBase64 && mainWindow) {
+      mainWindow.webContents.send("capture:completed", imageBase64);
+      bringMainWindowToFront();
+    }
+  });
+
+  if (!registered) {
+    console.warn("Failed to register Alt+S global shortcut - it may already be in use by another application.");
+  }
+}
+
+function unregisterGlobalShortcuts(): void {
+  globalShortcut.unregisterAll();
+}
+
 // App Lifecycle
 app.whenReady().then(() => {
   registerIpcHandlers();
   createWindow();
+  registerGlobalShortcuts();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
   });
+});
+
+app.on("will-quit", () => {
+  unregisterGlobalShortcuts();
 });
 
 app.on("window-all-closed", () => {
