@@ -53,5 +53,6 @@ Thumbs.db
 # Captured screenshots / local app data
 screenshots/
 data/
+
 # Electron build output (vite-plugin-electron)
 dist-electron/

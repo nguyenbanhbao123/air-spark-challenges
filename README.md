@@ -1,100 +1,114 @@
-# Snapper AI
+  # Snapper AI
 
-Select any region of your screen and ask an AI about it, without leaving what you are doing.
-Electron + TypeScript + React + Tailwind, running on the ASU AIR platform.
+  Select any region of your screen and ask an AI about it without leaving what you are doing. Snapper AI is an Electron desktop app built with TypeScript, React, and Tailwind for the ASU AIR Spark Challenge.
 
----
+  ![ASU AIR Spark Hackathon](https://img.shields.io/badge/ASU_AIR-Spark_Hackathon-gold?style=for-the-badge)
+  ![Electron](https://img.shields.io/badge/Electron-44-blue?style=for-the-badge&logo=electron)
+  ![React](https://img.shields.io/badge/React-19-cyan?style=for-the-badge&logo=react)
+  ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38bdf8?style=for-the-badge&logo=tailwindcss)
 
-## Running it — start to finish
+  ## Features
 
-You need **Node.js 20 or newer** and **git**. Nothing else.
+  - Capture a screen region from the app or with the global `Alt + S` shortcut.
+  - Frame the capture, review it, and include a question before sending.
+  - Ask follow-up questions in a multi-turn AI chat.
+  - Persist conversations locally through Electron's user-data storage.
+  - Use ASU AIR's vision API directly from Electron's main process; the API key never reaches the renderer.
 
-```bash
-git clone https://github.com/nguyenbanhbao123/air-spark-challenges.git
-cd air-spark-challenges
-npm install
-```
+  ## Quick start
 
-### Then the step everyone forgets
+  ### Prerequisites
 
-**The repo does not contain an API key.** `.env` is gitignored, so a fresh clone has no key and
-every question will fail with `ASU_API_KEY is not set`.
+  - Node.js 20 or newer
+  - Git
 
-Copy the example and paste your own key:
+  ### Install
 
-```bash
-cp .env.example .env      # Windows: copy .env.example .env
-```
+  ```bash
+  git clone https://github.com/nguyenbanhbao123/air-spark-hackathon.git
+  cd air-spark-hackathon
+  npm install
+  ```
 
-Then open `.env` and replace the placeholder with your ASU AIR key. If you do not have one, get
-it from `voyager.rc.asu.edu` under *Non-HPC / LLM API access* — it is self-service and instant,
-but Voyager itself needs the ASU VPN. The API the app calls does **not** need the VPN.
+  ### Configure the API key
 
-### Start it
+  Copy the example environment file, then replace the placeholder with your ASU AIR API key:
 
-```bash
-npm run dev
-```
+  ```bash
+  cp .env.example .env
+  ```
 
-A window opens. That is it.
+  On Windows PowerShell, use `Copy-Item .env.example .env` instead. Get an API key from `voyager.rc.asu.edu` under *Non-HPC / LLM API access*. Do not commit your `.env` file.
 
----
+  ### Build
 
-## Using it
+  Create a production build and run the TypeScript and Vite checks:
 
-| Action | How |
-|---|---|
-| **Capture from anywhere** | Press **Alt + S** — works while any other app is focused |
-| Capture from the app | Click **Get Started** on the home screen |
-| Frame the shot | Drag a rectangle, then release |
-| Ask | Type in the bar under the snippet, press **Enter** |
-| Cancel | **Esc** |
+  ```bash
+  npm run build
+  ```
 
-After you send, the chat opens with your screenshot and your question already on its way.
+  The build output is written to `dist/` and `dist-electron/`.
 
-The app **keeps running when you close the window** so that Alt + S still works. Press Alt + S
-again and the window comes back. To quit properly, stop it from the terminal you started it in.
+  ### Run
 
----
+  ```bash
+  npm run dev
+  ```
 
-## If something does not work
+  The Electron window opens automatically. No Python or separate backend service is required.
 
-**Every question times out, and the error mentions `10.139.x.x`**
-You are on ASU campus wifi. ASU's DNS resolves the API to an internal address the wireless
-network cannot reach. Set your DNS to `1.1.1.1` and `8.8.8.8` and restart the app. The API
-gateway itself is public.
+  ## How to use
 
-**Alt + S does nothing**
-Another application already owns that shortcut. The terminal will have logged
-`Failed to register Alt+S global shortcut`. Change the binding in `src/main.ts`.
+  | Action | How |
+  | --- | --- |
+  | Capture from anywhere | Press `Alt + S` while another app is focused. |
+  | Capture from the app | Click **Get Started** on the home screen. |
+  | Frame a shot | Drag a rectangle in the selection overlay, then release. |
+  | Ask a question | Type it in the capture review screen and press `Enter` or select **Send**. |
+  | Cancel a capture | Press `Esc`. |
 
-**A question fails with `403 Forbidden`**
-The ASU endpoint sits behind a firewall that rejects requests whose text contains certain
-patterns. See `OPENCODE-403-NOTES.md`. It affects AI coding assistants far more than it affects
-this app.
+  After you send a capture, the chat opens with the image and question ready to go. The app remains resident after its window closes so the global shortcut continues to work; quit it from the terminal that launched it.
 
-**macOS: the screenshot is blank**
-Grant screen-recording permission to your terminal or to Electron in
-*System Settings → Privacy & Security → Screen Recording*, then restart the app.
+  ## Project structure
 
----
+  ```text
+  src/
+    main.ts                         Electron main process, IPC, and Alt+S shortcut
+    preload.ts                      Secure window.api bridge
+    core/types.ts                   Shared TypeScript types
+    api/
+      ai.ts                         ASU AIR vision client (glm-4-5v)
+      storage.ts                    Local conversation storage
+    capture/
+      captureRegion.ts              Screen capture and overlay-window manager
+      RegionCaptureOverlay.tsx      Region selection and capture review UI
+      CapturePage.tsx               Capture review and question UI
+    ui/
+      App.tsx                       Main React application
+      HomePage.tsx                  Home screen
+      ChatPopup.tsx                 AI conversation screen
+      SignInPage.tsx                Sign-in screen
+      RegisterPage.tsx              Registration screen
+      index.css                     Tailwind styling
+  ```
 
-## How it is put together
+  ## Notes and troubleshooting
 
-```
-index.html              Vite entry
-src/
-  main.ts               MAIN: window, IPC handlers, the Alt+S global shortcut
-  preload.ts            the window.api bridge — the only route from renderer to main
-  core/types.ts         shared types
-  api/ai.ts             ASU API client (model: glm-4-5v)
-  api/storage.ts        conversations saved as JSON under Electron userData
-  capture/
-    captureRegion.ts    MAIN: screen grab, overlay window
-    RegionCaptureOverlay.tsx   drag to select
-    CapturePage.tsx     review the snippet, annotate, ask
-  ui/                   home screen, chat, sign-in, register
-```
+  - **Annotations:** the review screen shows Pen, Highlighter, and Text controls, but they are currently disabled placeholders.
+  - **`Alt + S` does nothing:** another application may own the shortcut. Check the terminal for the registration warning and change the binding in `src/main.ts` if needed.
+  - **Questions time out on ASU campus Wi-Fi:** campus DNS may resolve the API gateway to an unreachable internal address. Configure system DNS to `1.1.1.1` or `8.8.8.8`, then restart the app.
+  - **A question returns 403:** the ASU endpoint firewall can reject request text matching its website-protection rules. See `OPENCODE-403-NOTES.md` for the project-specific details.
+  - **macOS screenshots are blank:** grant Screen Recording permission to Electron or the launching terminal in **System Settings > Privacy & Security > Screen Recording**, then restart the app.
 
-`AGENTS.md` holds the working agreements and the firewall constraint — read it before pointing an
-AI assistant at this repo.
+  ## Scripts
+
+  ```bash
+  npm run dev
+  npm run build
+  npm run preview
+  ```
+
+  ## License
+
+  Built for the ASU AIR Spark Hackathon.
