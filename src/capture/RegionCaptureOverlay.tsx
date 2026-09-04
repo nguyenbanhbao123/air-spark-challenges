@@ -45,9 +45,18 @@ export const RegionCaptureOverlay: React.FC = () => {
         const scaleX = img.width / window.innerWidth;
         const scaleY = img.height / window.innerHeight;
 
+        const srcW = Math.max(1, Math.round(rect.width * scaleX));
+        const srcH = Math.max(1, Math.round(rect.height * scaleY));
+
+        // The API rejects large payloads with a 413, and base64 inflates a PNG by
+        // about a third. Cap the long edge and encode as JPEG — a vision model
+        // gains nothing from a full-resolution screenshot.
+        const MAX_EDGE = 1400;
+        const shrink = Math.min(1, MAX_EDGE / Math.max(srcW, srcH));
+
         const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(rect.width * scaleX));
-        canvas.height = Math.max(1, Math.round(rect.height * scaleY));
+        canvas.width = Math.max(1, Math.round(srcW * shrink));
+        canvas.height = Math.max(1, Math.round(srcH * shrink));
 
         const ctx = canvas.getContext('2d');
         if (!ctx) {
@@ -58,14 +67,14 @@ export const RegionCaptureOverlay: React.FC = () => {
           img,
           Math.round(rect.x * scaleX),
           Math.round(rect.y * scaleY),
-          canvas.width,
-          canvas.height,
+          srcW,
+          srcH,
           0,
           0,
           canvas.width,
           canvas.height
         );
-        resolve(canvas.toDataURL('image/png'));
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
       };
       img.onerror = () => resolve(imageSrc);
       img.src = imageSrc;
