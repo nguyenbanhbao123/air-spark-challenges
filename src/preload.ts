@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Conversation, Message, Rect } from './core/types'
+import type { CaptureResult, Conversation, Message, Rect } from './core/types'
 
 // The main process sends overlay:image as soon as the overlay window finishes
 // loading, which can be before React has mounted and registered its callback.
@@ -12,16 +12,16 @@ ipcRenderer.on('overlay:image', (_e, dataUrl: string) => {
   for (const listener of overlayImageListeners) listener(dataUrl)
 })
 
-let bufferedCaptureCompletedImage: string | null = null
-const captureCompletedListeners: Array<(dataUrl: string) => void> = []
+let bufferedCaptureCompleted: CaptureResult | null = null
+const captureCompletedListeners: Array<(result: CaptureResult) => void> = []
 
-ipcRenderer.on('capture:completed', (_e, dataUrl: string) => {
-  bufferedCaptureCompletedImage = dataUrl
-  for (const listener of captureCompletedListeners) listener(dataUrl)
+ipcRenderer.on('capture:completed', (_e, result: CaptureResult) => {
+  bufferedCaptureCompleted = result
+  for (const listener of captureCompletedListeners) listener(result)
 })
 
 contextBridge.exposeInMainWorld('api', {
-  captureRegion: (): Promise<string | null> =>
+  captureRegion: (): Promise<CaptureResult | null> =>
     ipcRenderer.invoke('capture:region'),
 
   ask: (image: string, question: string, history: Message[]): Promise<string> =>
@@ -55,8 +55,8 @@ contextBridge.exposeInMainWorld('api', {
   submitSelection: (rect: Rect | null): void =>
     ipcRenderer.send('capture:selection', rect),
 
-  onCaptureCompleted: (cb: (dataUrl: string) => void): void => {
+  onCaptureCompleted: (cb: (result: CaptureResult) => void): void => {
     captureCompletedListeners.push(cb)
-    if (bufferedCaptureCompletedImage) cb(bufferedCaptureCompletedImage)
+    if (bufferedCaptureCompleted) cb(bufferedCaptureCompleted)
   }
 })

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, MouseEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, Mic, Pen, Highlighter, Type } from 'lucide-react';
 
 type CapturePageProps = {
@@ -7,249 +7,129 @@ type CapturePageProps = {
   onCancel: () => void;
 };
 
+/**
+ * The review step, shown in the overlay window once a region has been grabbed.
+ *
+ * The snippet is displayed at its own size — never blown up to fill the screen —
+ * with the annotation toolbar above it and the prompt bar below. Nothing is sent
+ * to the model until the user confirms from here.
+ */
 export const CapturePage: React.FC<CapturePageProps> = ({
   imageSrc,
   onConfirm,
   onCancel,
 }) => {
-  const [cropRect, setCropRect] = useState({ x: 0, y: 0, width: 0, height: 0 });
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeHandle, setResizeHandle] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [question, setQuestion] = useState('');
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onCancel();
-      } else if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        if (question.trim()) {
-          onConfirm(imageSrc, question);
-        }
-      }
+      if (e.key === 'Escape') onCancel();
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [imageSrc, question, onConfirm, onCancel]);
+  }, [onCancel]);
 
-  const initializeCropRect = () => {
-    if (containerRef.current && imageSrc) {
-      const container = containerRef.current;
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(
-          container.clientWidth / img.width,
-          container.clientHeight / img.height
-        );
-        const displayWidth = img.width * scale;
-        const displayHeight = img.height * scale;
-        const displayX = (container.clientWidth - displayWidth) / 2;
-        const displayY = (container.clientHeight - displayHeight) / 2;
+  // The screenshot is in device pixels; show it at its true CSS size, only
+  // scaling down if the snippet is larger than the space available.
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const dpr = window.devicePixelRatio || 1;
+    const naturalW = img.naturalWidth / dpr;
+    const naturalH = img.naturalHeight / dpr;
 
-        setCropRect({
-          x: displayX + 20,
-          y: displayY + 20,
-          width: Math.max(100, displayWidth - 40),
-          height: Math.max(100, displayHeight - 40),
-        });
-      };
-      img.src = imageSrc;
-    }
+    const maxW = window.innerWidth * 0.8;
+    const maxH = window.innerHeight * 0.6;
+    const scale = Math.min(1, maxW / naturalW, maxH / naturalH);
+
+    setSize({ w: Math.round(naturalW * scale), h: Math.round(naturalH * scale) });
   };
 
-  useEffect(() => {
-    if (imageSrc) {
-      initializeCropRect();
-    }
-  }, [imageSrc]);
-
-  const getHandleStyle = (handle: string) => {
-    const size = 12;
-    const pos: Record<string, any> = {
-      'nw': { top: -6, left: -6, cursor: 'nw-resize' },
-      'ne': { top: -6, right: -6, cursor: 'ne-resize' },
-      'sw': { bottom: -6, left: -6, cursor: 'sw-resize' },
-      'se': { bottom: -6, right: -6, cursor: 'se-resize' },
-    };
-    return {
-      width: size,
-      height: size,
-      backgroundColor: 'var(--highlight)',
-      border: `2px solid var(--highlight-2)`,
-      ...pos[handle],
-    };
-  };
-
-  const handleMouseDown = (e: MouseEvent, handle: string | null) => {
-    e.preventDefault();
-    if (handle) {
-      setIsResizing(true);
-      setResizeHandle(handle);
-    } else {
-      setIsDragging(true);
-    }
-    setDragStart({ x: e.clientX - cropRect.x, y: e.clientY - cropRect.y });
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (isResizing && resizeHandle) {
-      const dx = e.clientX - dragStart.x;
-      const dy = e.clientY - dragStart.y;
-
-      let newRect = { ...cropRect };
-
-      if (resizeHandle.includes('e')) newRect.width = Math.max(50, cropRect.width + (dx - (e.clientX - dragStart.x)));
-      if (resizeHandle.includes('s')) newRect.height = Math.max(50, cropRect.height + (dy - (e.clientY - dragStart.y)));
-      if (resizeHandle.includes('w')) {
-        const newWidth = Math.max(50, cropRect.width - (dx - (e.clientX - dragStart.x)));
-        newRect.width = newWidth;
-        newRect.x = cropRect.x + (cropRect.width - newWidth);
-      }
-      if (resizeHandle.includes('n')) {
-        const newHeight = Math.max(50, cropRect.height - (dy - (e.clientY - dragStart.y)));
-        newRect.height = newHeight;
-        newRect.y = cropRect.y + (cropRect.height - newHeight);
-      }
-
-      setCropRect(newRect);
-      setDragStart({ x: e.clientX, y: e.clientY });
-    } else if (isDragging) {
-      setCropRect({
-        ...cropRect,
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y,
-      });
-      setDragStart({ x: e.clientX, y: e.clientY });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsResizing(false);
-    setIsDragging(false);
-    setResizeHandle(null);
-  };
-
-  const handleSend = () => {
-    if (question.trim()) {
-      onConfirm(imageSrc, question);
-    }
+  const send = () => {
+    if (question.trim()) onConfirm(imageSrc, question);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      send();
     }
   };
 
+  const bracket = 'absolute h-5 w-5 border-[var(--accent)] pointer-events-none';
+
   return (
-    <div
-      ref={containerRef}
-      className="fixed inset-0 h-screen w-screen cursor-crosshair overflow-hidden bg-black/50 select-none"
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-    >
-      {imageSrc && (
+    <div className="fixed inset-0 flex h-screen w-screen flex-col items-center justify-center gap-4 bg-black/45 select-none">
+
+      {/* Annotation toolbar — present for layout; the tools are not wired up yet. */}
+      <div className="flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 shadow-lg">
+        {[
+          { icon: <Pen size={15} />, label: 'Pen' },
+          { icon: <Highlighter size={15} />, label: 'Highlighter' },
+          { icon: <Type size={15} />, label: 'Text' },
+        ].map((tool) => (
+          <button
+            key={tool.label}
+            disabled
+            title={`${tool.label} — coming soon`}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[var(--text-muted)] opacity-50 cursor-not-allowed"
+          >
+            {tool.icon}
+            <span className="text-xs font-medium">{tool.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* The snippet, at its own size, with corner brackets. */}
+      <div
+        className="relative"
+        style={size ? { width: size.w, height: size.h } : undefined}
+      >
         <img
           src={imageSrc}
-          alt="Screen Capture"
-          className="absolute inset-0 h-full w-full object-contain [webkit-user-drag:none]"
-          style={{
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-          }}
+          alt="Captured region"
+          onLoad={handleImageLoad}
+          style={size ? { width: size.w, height: size.h } : { maxWidth: '80vw', maxHeight: '60vh' }}
+          className="block rounded-sm shadow-2xl [webkit-user-drag:none]"
         />
-      )}
-
-      <div
-        className="absolute border-2 border-[var(--accent)] bg-transparent pointer-events-none"
-        style={{
-          left: `${cropRect.x}px`,
-          top: `${cropRect.y}px`,
-          width: `${cropRect.width}px`,
-          height: `${cropRect.height}px`,
-          boxShadow: `inset 0 0 0 9999px rgba(0, 0, 0, 0.5)`,
-        }}
-      >
-        <div
-          className="absolute"
-          style={getHandleStyle('nw')}
-          onMouseDown={(e) => handleMouseDown(e, 'nw')}
-        />
-        <div
-          className="absolute"
-          style={getHandleStyle('ne')}
-          onMouseDown={(e) => handleMouseDown(e, 'ne')}
-        />
-        <div
-          className="absolute"
-          style={getHandleStyle('sw')}
-          onMouseDown={(e) => handleMouseDown(e, 'sw')}
-        />
-        <div
-          className="absolute"
-          style={getHandleStyle('se')}
-          onMouseDown={(e) => handleMouseDown(e, 'se')}
-        />
+        <span className={`${bracket} -left-1.5 -top-1.5 border-l-2 border-t-2`} />
+        <span className={`${bracket} -right-1.5 -top-1.5 border-r-2 border-t-2`} />
+        <span className={`${bracket} -bottom-1.5 -left-1.5 border-b-2 border-l-2`} />
+        <span className={`${bracket} -bottom-1.5 -right-1.5 border-b-2 border-r-2`} />
       </div>
 
+      {/* Prompt bar — matches the snippet's width so the whole thing reads as one object. */}
       <div
-        className="absolute flex items-center gap-3 rounded-full bg-[var(--surface)] border border-[var(--border)] px-4 py-2 shadow-lg"
-        style={{
-          left: `${cropRect.x}px`,
-          top: `${cropRect.y - 56}px`,
-        }}
-      >
-        <button className="flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--text)] transition">
-          <Pen size={16} />
-          <span className="text-xs font-medium">Pen</span>
-        </button>
-        <button className="flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--text)] transition">
-          <Highlighter size={16} />
-          <span className="text-xs font-medium">Highlighter</span>
-        </button>
-        <button className="flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--text)] transition">
-          <Type size={16} />
-          <span className="text-xs font-medium">Text</span>
-        </button>
-      </div>
-
-      <div
-        className="absolute flex items-center gap-3 rounded-full bg-[var(--surface)] border border-[var(--border)] px-4 py-3 shadow-lg"
-        style={{
-          left: `${cropRect.x}px`,
-          bottom: `${window.innerHeight - cropRect.y - cropRect.height - 80}px`,
-          width: `${cropRect.width}px`,
-        }}
+        className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 shadow-lg"
+        style={{ width: size ? Math.max(size.w, 320) : 420 }}
       >
         <button
-          className="flex items-center justify-center w-8 h-8 rounded-full text-[var(--text-muted)] hover:bg-[var(--surface-2)] transition"
           title="Voice input coming soon"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--accent)] transition hover:bg-[var(--surface-2)]"
         >
           <Mic size={16} className="animate-pulse" />
         </button>
+
         <input
           type="text"
+          autoFocus
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={handleKeyPress}
-          placeholder="Ask anything about your selection..."
-          className="min-w-0 flex-1 bg-transparent text-xs text-[var(--text)] outline-none placeholder:text-[var(--text-muted)]"
+          placeholder="Ask anything about this selection..."
+          className="min-w-0 flex-1 bg-transparent text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)]"
         />
+
         <button
-          onClick={handleSend}
+          onClick={send}
           disabled={!question.trim()}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white transition hover:bg-[var(--accent-2)] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-white transition hover:bg-[var(--accent-2)] disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Send size={14} />
         </button>
       </div>
+
+      <p className="text-xs text-white/70">Press Enter to send · Esc to cancel</p>
     </div>
   );
 };

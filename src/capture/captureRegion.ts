@@ -57,6 +57,10 @@ export async function captureRegion(): Promise<CaptureResult | null> {
     overlay.once('closed', () => resolve(null));
   });
 
+  // A capture that ended by closing the window would otherwise leave this
+  // listener registered, and it would swallow the next capture's submit.
+  ipcMain.removeAllListeners('capture:submit');
+
   if (!overlay.isDestroyed()) overlay.close();
 
   return result;

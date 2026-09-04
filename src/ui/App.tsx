@@ -57,6 +57,19 @@ export default function App() {
     setConversation(updatedConversation);
   };
 
+  // The chat takes over the whole window — the landing page behind it would only
+  // be a distraction once the user is in a conversation.
+  if (isChatOpen && conversation && capturedImage) {
+    return (
+      <ChatPopup
+        initialQuestion={pendingQuestion}
+        conversation={conversation}
+        onConversationUpdate={handleConversationUpdate}
+        onClose={handleCloseChat}
+      />
+    );
+  }
+
   if (page === "signin") {
     return (
       <SignInPage
@@ -76,21 +89,10 @@ export default function App() {
   }
 
   return (
-    <>
-      <HomePage
-        onSignIn={() => setPage("signin")}
-        onRegister={() => setPage("register")}
-        onCapture={handleCaptureClick}
-      />
-      
-      {isChatOpen && conversation && capturedImage && (
-        <ChatPopup
-          initialQuestion={pendingQuestion}
-          conversation={conversation}
-          onConversationUpdate={handleConversationUpdate}
-          onClose={handleCloseChat}
-        />
-      )}
-    </>
+    <HomePage
+      onSignIn={() => setPage("signin")}
+      onRegister={() => setPage("register")}
+      onCapture={handleCaptureClick}
+    />
   );
 }

@@ -11,7 +11,5 @@ const isOverlay = window.location.hash === "#/overlay";
 ReactDOM.createRoot(
   document.getElementById("root")!
 ).render(
-  <React.StrictMode>
-    {isOverlay ? <RegionCaptureOverlay /> : <App />}
-  </React.StrictMode>
+  isOverlay ? <RegionCaptureOverlay /> : <App />
 );
