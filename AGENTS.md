@@ -1,11 +1,12 @@
 # AI Screen Snapping — agent instructions
 
-An Electron + TypeScript + React desktop tool: select any region of the screen, ask a model
-about it, without leaving what you were doing. Built for the ASU AIR Spark Challenge.
+An Electron + TypeScript + React + Tailwind desktop tool: select any region of the screen, ask a
+model about it, without leaving what you were doing. Built for the ASU AIR Spark Challenge.
 
-The full spec — flow, priorities, repository structure, frozen types, the IPC contract, and the
-five work tracks — lives in `ARCHITECTURE-NOTES.md`, kept **outside** this repo. Ask your owner
-for the path if you do not have it. Read it before writing code.
+`ARCHITECTURE-NOTES.md` (kept outside this repo — ask your owner for the path) holds the original
+team spec: the product flow, priorities, and the five work tracks. Read it for intent. **But this
+repo has deliberately moved on from parts of it — section 3 below lists where. Follow this file,
+not the spec, wherever they disagree, and never "fix" the code back toward the spec.**
 
 ---
 
@@ -29,18 +30,23 @@ so that this file does not itself trip the rule. Neither character is in the rea
 - `${j·ndi:ldap://…}`
 
 Everything else is fine and needs no avoidance: `rm -rf`, SQL strings, `<iframe`, `<?php`,
-`eval(`, `document.cookie`, `../../../..`, React JSX, large payloads, streaming, tool calls, and
-backticks around non-network commands such as `ls -la`, `git status`, `npm install`.
+`eval(`, `document.cookie`, `../../../..`, React JSX, Tailwind classes, large payloads,
+streaming, tool calls, and backticks around non-network commands such as `ls -la`, `git status`,
+`npm install`.
 
-### The rule that follows
+### The one landmine in this repo
 
-**Do not read, write, edit, or diff any `.html` file in this repo.** Every one of them contains
-a script tag. `src/ui/index.html` and `src/capture/overlay.html` are both landmines. This
-includes opening one to look, globbing and then reading the results, and running `git diff` on
-one. If an `.html` file needs changing, say which lines to change and let the human edit it.
+**`index.html` in the repo root is the only source file containing a script tag. Never read,
+write, edit, or diff it.** That includes opening it to look, globbing and then reading the
+results, and running `git diff` on it. It is the Vite entry point and already correct — if it
+ever needs changing, say which lines to change and let the human edit it.
+
+Everything under `src/` is `.ts`, `.tsx` and `.css` and is safe to read and edit freely — the
+selection overlay is a React component (`RegionCaptureOverlay.tsx`), not an HTML file. Built
+output under `dist/` and `dist-electron/` also contains script tags; never read those either.
 
 `git` itself is safe — clone, checkout, commit, push and `gh pr create` all pass. `git diff` is
-safe only on non-HTML files.
+safe on everything except the files named above.
 
 ### If you hit `Forbidden` anyway
 
@@ -54,35 +60,84 @@ still on disk.
 
 ---
 
-## 2. Stay inside your owner's track
+## 2. How this project is actually laid out
 
-The work is split into five tracks, A through E, each with an explicit file list in
-`ARCHITECTURE-NOTES.md` sections 9–13. Your owner has claimed exactly one.
+```
+index.html                      Vite entry. DO NOT TOUCH (script tag).
+vite.config.mts                 vite-plugin-electron builds main + preload into dist-electron/
+package.json                    main: dist-electron/main.js
+src/
+  main.ts                       MAIN: creates the window, registers every ipcMain handler,
+                                loads http://localhost:5173, calls dotenv.config()
+  preload.ts                    the window.api bridge — the only path from renderer to main
+  core/types.ts                 shared types: Role, Message, Conversation, Rect
+  api/
+    ai.ts                       ASU client. ask(image, question, history). Model glm-4-5v.
+    storage.ts                  loadAll, getConversation, save, createConversation,
+                                deleteConversation — JSON files under Electron userData
+  capture/
+    captureRegion.ts            MAIN: screen grab, overlay window, crop
+    RegionCaptureOverlay.tsx    RENDERER: the drag-to-select overlay
+  ui/
+    main.tsx  App.tsx  HomePage.tsx  ChatPopup.tsx  SignInPage.tsx  RegisterPage.tsx
+    index.css                   Tailwind v4
+```
 
-- **Do not create or edit files outside that track.** If your owner needs something that lives
-  in another track's folder, it belongs in `core/` — say so, and let them raise it in the team
-  channel rather than reaching across.
-- **The interfaces in sections 6 and 7 are frozen.** `src/core/types.ts` and the `window.api`
-  IPC contract are coded against by every other track. Never change a name, a signature, or an
-  IPC channel string. If one genuinely has to change, stop and tell your owner to agree it in
-  the channel first.
-- `core/` imports nothing. `capture/`, `services/` and `ui/` import only from `core/`. No module
-  imports from a sibling. Only `main.ts` imports from everything.
+### Process boundary
 
-## 3. Process boundary
+`main.ts`, `api/` and `capture/captureRegion.ts` run in Electron's **main** process: Node,
+filesystem and outbound network. Everything in `ui/`, plus `RegionCaptureOverlay.tsx`, runs in
+the sandboxed **renderer**: no Node, no filesystem, no direct network to the ASU API.
 
-Electron's main process (`main.ts`, `capture/`, `services/`) has Node, filesystem, and network
-access. The renderer (`ui/`) is sandboxed React with none of those — it reaches the main process
-only through `window.api`, defined in `preload.ts`. The API key lives in the main process and
-must never reach the renderer.
+They talk only through `window.api`, defined in `preload.ts`. A renderer file must never import
+from `api/` or from `captureRegion.ts` — call `window.api` instead. The API key lives in the main
+process and must never reach the renderer.
+
+### The IPC contract
+
+`preload.ts` exposes exactly six methods, and `main.ts` registers the matching handlers:
+
+| `window.api` method | channel | handled by |
+|---|---|---|
+| `captureRegion()` | `capture:region` | `captureRegion()` |
+| `ask(image, question, history)` | `ai:ask` | `api/ai.ts` |
+| `saveConversation(c)` | `storage:save` | `api/storage.ts` |
+| `loadConversations()` | `storage:loadAll` | `api/storage.ts` |
+| `onOverlayImage(cb)` | `overlay:image` | pushed by `captureRegion()` |
+| `submitSelection(rect)` | `capture:selection` | listened for by `captureRegion()` |
+
+`main.ts` also registers `storage:create`, `storage:delete`, `storage:get` and `get-app-version`,
+which `preload.ts` does not yet expose. If the UI needs one, add it to `preload.ts` **and** to the
+`Window.api` type in `core/types.ts` in the same change — those three must always agree.
+
+---
+
+## 3. Where this repo has moved on from ARCHITECTURE-NOTES.md
+
+These are current reality, not mistakes. Do not revert them.
+
+- The AI client and storage live in `src/api/`, not `src/services/`.
+- The selection overlay is `capture/RegionCaptureOverlay.tsx`, not an `overlay.html`.
+- `Message` and `Conversation` in `core/types.ts` have been extended: `Message` gained `id` and
+  `createdAt`; `Conversation` gained `title` and `updatedAt`, uses numeric epoch timestamps, and
+  no longer carries an `image` field.
+- The build is `vite-plugin-electron`, not a separate `tsc` step producing `dist/`.
+
+---
 
 ## 4. Commands
 
 ```
 npm install
-npm run dev      # Vite + Electron in dev mode
-npm run build    # production build
+npm run dev      # Vite dev server + Electron, via vite-plugin-electron
+npm run build    # tsc + vite build
 ```
 
-A gitignored `.env` in the repo root holds `ASU_API_KEY`. Never commit it, never print it, and
-never inline a key into source.
+## 5. Secrets
+
+The key belongs in a gitignored `.env` in the repo root as `ASU_API_KEY`; `main.ts` loads it with
+dotenv. Never commit it, never print it, and never inline a key into source.
+
+`opencode.json` is committed and shared with the team, so **never write an `apiKey` into it** —
+a key was removed from that file once already. Personal credentials belong in
+`~/.local/share/opencode/auth.json`, which OpenCode falls back to automatically.

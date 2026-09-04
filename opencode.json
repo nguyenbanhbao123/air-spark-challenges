@@ -28,8 +28,7 @@
       "npm": "@ai-sdk/openai-compatible",
       "name": "ASU Air",
       "options": {
-        "baseURL": "https://openai.rc.asu.edu/v1",
-        "apiKey": "sk-fcX88gLO54_V_XB6SmMH7A"
+        "baseURL": "https://openai.rc.asu.edu/v1"
       },
       "models": {
         "glm-4-5v": {
