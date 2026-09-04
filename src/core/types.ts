@@ -10,9 +10,16 @@ export type Message = {
 export type Conversation = {
   id: string;
   title: string;
+  image: string;
   createdAt: number;
   updatedAt: number;
   messages: Message[];
+};
+
+/** What a completed capture hands back: the framed image and the question asked with it. */
+export type CaptureResult = {
+  image: string;
+  question: string;
 };
 
 export interface Rect {
@@ -25,12 +32,17 @@ export interface Rect {
 declare global {
   interface Window {
     api: {
-      captureRegion(): Promise<string | null>;
+      captureRegion(): Promise<CaptureResult | null>;
       ask(image: string, question: string, history: Message[]): Promise<string>;
       saveConversation(c: Conversation): Promise<void>;
       loadConversations(): Promise<Conversation[]>;
+      createConversation(title?: string): Promise<Conversation>;
+      getConversation(id: string): Promise<Conversation | null>;
+      deleteConversation(id: string): Promise<void>;
       onOverlayImage(cb: (dataUrl: string) => void): void;
       submitSelection(rect: Rect | null): void;
+      submitCapture(image: string | null, question: string): void;
+      onCaptureCompleted(cb: (result: CaptureResult) => void): void;
     };
   }
 }

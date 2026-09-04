@@ -1,8 +1,8 @@
 import { BrowserWindow, desktopCapturer, ipcMain, screen } from 'electron';
 import path from 'node:path';
-import type { Rect } from '../core/types';
+import type { CaptureResult } from '../core/types';
 
-export async function captureRegion(): Promise<string | null> {
+export async function captureRegion(): Promise<CaptureResult | null> {
   const display = screen.getPrimaryDisplay();
   const scale = display.scaleFactor;
 
@@ -41,30 +41,28 @@ export async function captureRegion(): Promise<string | null> {
     });
   }
 
-  // 3. Send image and await selection from React component
-  const rect = await new Promise<Rect | null>((resolve) => {
-    overlay.webContents.once('did-finish-load', () => {
-      overlay.webContents.send('overlay:image', shot.toDataURL());
-    });
+  // 3. Send the image, then await the selection from the React component.
+  // loadURL/loadFile above already resolves on did-finish-load, so listening for
+  // that event here would attach too late and never fire. Send it directly —
+  // preload buffers the value, so it is safe to send before React mounts.
+  overlay.webContents.send('overlay:image', shot.toDataURL());
 
-    ipcMain.once('capture:selection', (_event, selectionRect: Rect | null) => {
-      resolve(selectionRect);
+  // The overlay crops the selection itself and only reports back once the user
+  // has framed the shot and sent their question from the capture page.
+  const result = await new Promise<CaptureResult | null>((resolve) => {
+    ipcMain.once('capture:submit', (_event, image: string | null, question: string) => {
+      resolve(image ? { image, question } : null);
     });
 
     overlay.once('closed', () => resolve(null));
   });
 
+  // A capture that ended by closing the window would otherwise leave this
+  // listener registered, and it would swallow the next capture's submit.
+  ipcMain.removeAllListeners('capture:submit');
+
   if (!overlay.isDestroyed()) overlay.close();
 
-  if (!rect || rect.width < 4 || rect.height < 4) return null;
+  return result;
 
-  // 4. Crop screen capture using selection bounds adjusted for display scale
-  const cropped = shot.crop({
-    x: Math.round(rect.x * scale),
-    y: Math.round(rect.y * scale),
-    width: Math.round(rect.width * scale),
-    height: Math.round(rect.height * scale),
-  });
-
-  return cropped.toDataURL();
 }

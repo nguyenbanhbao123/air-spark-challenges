@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, globalShortcut } from "electron";
 import * as path from "path";
 import dotenv from "dotenv";
 
@@ -33,11 +33,22 @@ function createWindow(): void {
     console.error("Failed to load renderer URL:", err);
   });
 
-  mainWindow.webContents.openDevTools();
+  // Off by default so the window is clean for demos and recording.
+  // Set OPEN_DEVTOOLS=1 in .env when you need the console back.
+  if (process.env.OPEN_DEVTOOLS) {
+    mainWindow.webContents.openDevTools();
+  }
 
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
+}
+
+function bringMainWindowToFront(): void {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
 }
 
 // Register IPC Handlers
@@ -66,10 +77,41 @@ function registerIpcHandlers(): void {
   ipcMain.handle("storage:get", (_event, id: string) => getConversation(id));
 }
 
+function registerGlobalShortcuts(): void {
+  const registered = globalShortcut.register("Alt+S", async () => {
+    console.log("Alt+S pressed - starting capture");
+    const result = await captureRegion();
+    if (!result) return;
+
+    // The user may have closed the window; the hotkey should still work.
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      createWindow();
+      // Give the renderer a moment to boot before handing it the capture.
+      setTimeout(() => {
+        mainWindow?.webContents.send("capture:completed", result);
+        bringMainWindowToFront();
+      }, 1200);
+      return;
+    }
+
+    mainWindow.webContents.send("capture:completed", result);
+    bringMainWindowToFront();
+  });
+
+  if (!registered) {
+    console.warn("Failed to register Alt+S global shortcut - it may already be in use by another application.");
+  }
+}
+
+function unregisterGlobalShortcuts(): void {
+  globalShortcut.unregisterAll();
+}
+
 // App Lifecycle
 app.whenReady().then(() => {
   registerIpcHandlers();
   createWindow();
+  registerGlobalShortcuts();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -78,8 +120,13 @@ app.whenReady().then(() => {
   });
 });
 
+app.on("will-quit", () => {
+  unregisterGlobalShortcuts();
+});
+
+// Deliberately do NOT quit when the window closes. The global hotkey is the
+// main way in, so the app stays resident and Alt+S rebuilds the window if the
+// user closed it. Quit from the tray of the terminal that launched it.
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  // no-op
 });

@@ -20,24 +20,24 @@ export default function RegisterPage({
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#070809] px-6 py-10 text-white">
+    <main className="flex min-h-screen items-center justify-center bg-gradient-ground px-6 py-10 text-[var(--text)]">
 
       <div className="w-full max-w-md">
 
         <button
           onClick={onBack}
-          className="mb-8 flex items-center gap-2 text-sm text-gray-500 hover:text-white"
+          className="mb-8 flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text)]"
         >
           <ArrowLeft size={16} />
           Back
         </button>
 
-        <div className="rounded-2xl border border-white/10 bg-[#101215] p-8 shadow-2xl">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-8 shadow-2xl">
 
           <div className="flex justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[#f5c842]/40 bg-black">
-              <span className="text-2xl font-bold text-[#f5c842]">
-                M
+            <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[var(--accent)]/40 bg-[var(--bg)]">
+              <span className="text-2xl font-bold text-[var(--accent)]">
+                S
               </span>
             </div>
           </div>
@@ -46,66 +46,66 @@ export default function RegisterPage({
             Create your account
           </h1>
 
-          <p className="mt-2 text-center text-sm text-gray-500">
-            Join Mindrop and start asking AI about your screen.
+          <p className="mt-2 text-center text-sm text-[var(--text-muted)]">
+            Join Snapper AI and start asking AI about your screen.
           </p>
 
           {/* Name */}
-          <label className="mt-7 block text-xs text-gray-400">
+          <label className="mt-7 block text-xs text-[var(--text-muted)]">
             Full name
           </label>
 
           <div className="relative mt-2">
             <User
               size={17}
-              className="absolute left-3 top-3.5 text-gray-600"
+              className="absolute left-3 top-3.5 text-[var(--text-muted)]"
             />
 
             <input
               type="text"
               placeholder="John Doe"
-              className="w-full rounded-lg border border-white/10 bg-[#090a0c] py-3 pl-10 pr-4 text-sm outline-none placeholder:text-gray-700 focus:border-[#f5c842]/50"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] py-3 pl-10 pr-4 text-sm outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]/50"
             />
           </div>
 
           {/* Email */}
-          <label className="mt-5 block text-xs text-gray-400">
+          <label className="mt-5 block text-xs text-[var(--text-muted)]">
             Email address
           </label>
 
           <div className="relative mt-2">
             <Mail
               size={17}
-              className="absolute left-3 top-3.5 text-gray-600"
+              className="absolute left-3 top-3.5 text-[var(--text-muted)]"
             />
 
             <input
               type="email"
               placeholder="you@example.com"
-              className="w-full rounded-lg border border-white/10 bg-[#090a0c] py-3 pl-10 pr-4 text-sm outline-none placeholder:text-gray-700 focus:border-[#f5c842]/50"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] py-3 pl-10 pr-4 text-sm outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]/50"
             />
           </div>
 
           {/* Password */}
-          <label className="mt-5 block text-xs text-gray-400">
+          <label className="mt-5 block text-xs text-[var(--text-muted)]">
             Password
           </label>
 
           <div className="relative mt-2">
             <Lock
               size={17}
-              className="absolute left-3 top-3.5 text-gray-600"
+              className="absolute left-3 top-3.5 text-[var(--text-muted)]"
             />
 
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Create a password"
-              className="w-full rounded-lg border border-white/10 bg-[#090a0c] py-3 pl-10 pr-11 text-sm outline-none placeholder:text-gray-700 focus:border-[#f5c842]/50"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] py-3 pl-10 pr-11 text-sm outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]/50"
             />
 
             <button
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-gray-600 hover:text-gray-300"
+              className="absolute right-3 top-3 text-[var(--text-muted)] hover:text-[var(--text)]"
             >
               {showPassword ? (
                 <EyeOff size={17} />
@@ -116,15 +116,15 @@ export default function RegisterPage({
           </div>
 
           {/* Create */}
-          <button className="mt-7 w-full rounded-lg bg-[#f5c842] py-3 font-semibold text-black transition hover:bg-[#ffd85c]">
+          <button className="mt-7 w-full rounded-lg bg-[var(--accent)] py-3 font-semibold text-white transition hover:bg-[var(--accent-2)]">
             Create account
           </button>
 
-          <p className="mt-6 text-center text-xs text-gray-500">
+          <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
             Already have an account?{" "}
             <button
               onClick={onSignIn}
-              className="font-medium text-[#f5c842]"
+              className="font-medium text-[var(--accent)]"
             >
               Sign in
             </button>
