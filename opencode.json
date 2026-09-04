@@ -1,0 +1,106 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "logLevel": "INFO",
+  "default_agent": "assistant",
+  "share": "manual",
+  "autoupdate": "notify",
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 2000
+  },
+  "permission": {
+    "read": "allow",
+    "list": "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "codesearch": "allow",
+    "todoread": "allow",
+    "question": "allow",
+    "bash": "allow",
+    "edit": "allow",
+    "webfetch": "allow",
+    "websearch": "allow",
+    "external_directory": "deny"
+  },
+  "provider": {
+    "asu": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "ASU Air",
+      "options": {
+        "baseURL": "https://openai.rc.asu.edu/v1",
+        "apiKey": "sk-fcX88gLO54_V_XB6SmMH7A"
+      },
+      "models": {
+        "glm-4-5v": {
+          "name": "Glm 4 5v",
+          "attachment": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        },
+        "glm-5-2": {
+          "name": "Glm 5 2"
+        },
+        "glm-5-3": {
+          "name": "Glm 5 3"
+        },
+        "glm-5-3-flash": {
+          "name": "Glm 5 3 Flash"
+        },
+        "gpt-oss-120b": {
+          "name": "GPT OSS 120B"
+        },
+        "granite41-30b": {
+          "name": "Granite41 30B"
+        },
+        "qwen-agentworld-35b-a3b": {
+          "name": "Qwen Agentworld 35B A3b"
+        },
+        "qwen3-coder-next": {
+          "name": "Qwen3 Coder Next"
+        }
+      }
+    }
+  },
+  "agent": {
+    "assistant": {
+      "model": "asu/glm-5-3-flash",
+      "mode": "primary",
+      "description": "General coding assistant — reads, writes, and runs code with your approval",
+      "prompt": "You are a careful, capable coding assistant. Understand the existing code before changing it. Make the smallest change that solves the problem, explain what you changed and why, and verify your work when possible. Ask before doing anything destructive. When a task is large, outline your plan briefly before starting. When you finish a significant piece of work, offer to have it reviewed by the reviewer subagent.",
+      "temperature": 1,
+      "steps": 25,
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "bash": "ask",
+        "codesearch": "allow",
+        "lsp": "allow",
+        "todowrite": "allow",
+        "todoread": "allow"
+      }
+    },
+    "reviewer": {
+      "model": "asu/glm-5-2",
+      "mode": "subagent",
+      "description": "Code Reviewer — audits changes for correctness, security, and maintainability",
+      "prompt": "You are a thorough, constructive code reviewer. Examine the provided changes for correctness (edge cases, error handling), security (input validation, injection, secret handling), and maintainability (clarity, consistency with the surrounding code). Respond in a structured format: return STATUS: APPROVED if the changes are sound, otherwise return STATUS: REJECTED with explicit, actionable bullet points detailing what must be fixed.",
+      "temperature": 1,
+      "steps": 10,
+      "permission": {
+        "read": "allow",
+        "edit": "deny",
+        "bash": "deny",
+        "codesearch": "allow",
+        "grep": "allow"
+      }
+    }
+  }
+}
